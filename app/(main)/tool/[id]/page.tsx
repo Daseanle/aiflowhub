@@ -1,50 +1,49 @@
-// 文件路径: app/tool/[id]/page.tsx (完整代码)
+// 路径: app/(main)/tool/[id]/page.tsx (完整代码)
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import UseCaseForm from '@/app/components/UseCaseForm';
+import { notFound } from 'next/navigation';
+
+// 明确定义页面接收的 Props 类型
+type PageProps = {
+  params: {
+    id: string;
+  };
+};
 
 export const dynamic = 'force-dynamic';
 
-async function getToolDetails(id: string) {
-  if (!id || isNaN(parseInt(id, 10))) {
-    return null;
-  }
-  
+export default async function ToolDetailPage({ params }: PageProps) {
   const supabase = createSupabaseServerClient();
-  
-  const toolPromise = supabase.from('tools').select('*').eq('id', id).single();
-  const useCasesPromise = supabase.from('use_cases').select('*').eq('tool_id', id).order('upvotes', { ascending: false });
+  const id = params.id;
+
+  // 首先，获取工具信息
+  const { data: tool } = await supabase
+    .from('tools')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  // 如果工具不存在，直接调用 notFound()，这是 Next.js 最推荐的方式
+  if (!tool) {
+    notFound();
+  }
+
+  // 然后，并行获取用例和用户信息
+  const useCasesPromise = supabase
+    .from('use_cases')
+    .select('*')
+    .eq('tool_id', tool.id)
+    .order('upvotes', { ascending: false });
+
   const userPromise = supabase.auth.getUser();
 
-  const [
-    { data: tool, error: toolError },
-    { data: useCases, error: useCasesError },
-    { data: { user } }
-  ] = await Promise.all([toolPromise, useCasesPromise, userPromise]);
-
-  if (toolError) return null;
-
-  return { tool, useCases: useCases || [], user };
-}
-
-export default async function ToolDetailPage({ params }: { params: { id:string } }) {
-  const details = await getToolDetails(params.id);
-
-  if (!details || !details.tool) {
-    return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">哎呀！工具不存在</h1>
-        <p className="mt-2">尝试查询的ID为: {params.id}</p>
-        <Link href="/" className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded">
-          返回首页
-        </Link>
-      </div>
-    );
-  }
-
-  const { tool, useCases, user } = details;
+  const [{ data: useCases }, { data: { user } }] = await Promise.all([
+    useCasesPromise,
+    userPromise,
+  ]);
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -85,7 +84,7 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
         )}
         
         <div className="mt-10 space-y-6">
-          {useCases.length > 0 ? (
+          {(useCases && useCases.length > 0) ? (
             useCases.map((useCase) => (
               <div key={useCase.id} className="bg-white shadow-sm rounded-lg p-6 border">
                 <h3 className="text-xl font-semibold text-indigo-700">{useCase.title}</h3>

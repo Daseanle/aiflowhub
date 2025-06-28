@@ -1,9 +1,7 @@
-// 文件路径: lib/supabase/server.ts (完整代码)
-
+// 文件路径: lib/supabase/server.ts (无需修改，确认内容即可)
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// 这个函数将在服务端组件中使用 (比如我们的所有页面)
 export function createSupabaseServerClient() {
   const cookieStore = cookies()
   return createServerClient(
@@ -15,18 +13,10 @@ export function createSupabaseServerClient() {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-          }
+          try { cookieStore.set({ name, value, ...options }) } catch (error) {}
         },
         remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // The `delete` method was called from a Server Component.
-          }
+          try { cookieStore.set({ name, value: '', ...options }) } catch (error) {}
         },
       },
     }

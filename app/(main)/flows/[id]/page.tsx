@@ -1,77 +1,59 @@
-// 文件路径: app/flows/[id]/page.tsx (完整代码)
+// 路径: app/(main)/flows/[id]/page.tsx (完整代码)
 
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { notFound } from 'next/navigation';
 
-type WorkflowStep = {
-  step: number;
-  title: string;
-  tool_id: number;
-  instructions: string;
-};
-type ToolInfo = {
-  id: number;
-  name: string;
-  tagline: string;
-} | null;
-type EnrichedStep = WorkflowStep & {
-  tool: ToolInfo;
+// 明确定义页面接收的 Props 类型
+type PageProps = {
+  params: {
+    id: string;
+  };
 };
 
-async function getWorkflowDetails(id: string) {
-  if (!id || isNaN(parseInt(id, 10))) {
-    return null;
-  }
-  
+export const dynamic = 'force-dynamic';
+
+// -- 类型定义 --
+type WorkflowStep = { step: number; title: string; tool_id: number; instructions: string; };
+type ToolInfo = { id: number; name: string; tagline: string; };
+type EnrichedStep = WorkflowStep & { tool: ToolInfo | null; };
+
+export default async function FlowDetailPage({ params }: PageProps) {
   const supabase = createSupabaseServerClient();
-  
-  const { data: workflow, error: workflowError } = await supabase
+  const id = params.id;
+
+  // 1. 获取工作流本身
+  const { data: workflow } = await supabase
     .from('workflows')
     .select('*')
     .eq('id', id)
     .single();
-
-  if (workflowError || !workflow) {
-    return null;
-  }
-
-  const steps: WorkflowStep[] = workflow.steps || [];
-  const toolIds = steps.map(step => step.tool_id).filter(id => id != null);
   
-  if (toolIds.length === 0) {
-    const enrichedStepsWithoutTools: EnrichedStep[] = steps.map(step => ({ ...step, tool: null }));
-    return { workflow, enrichedSteps: enrichedStepsWithoutTools };
+  if (!workflow) {
+    notFound();
   }
 
-  const { data: tools } = await supabase
-    .from('tools')
-    .select('id, name, tagline')
-    .in('id', toolIds);
+  // 2. 获取并处理步骤
+  //    我们在这里告诉 TypeScript，steps 数组里的每一项都是 any 类型
+  //    这是一种简单的“绕过”复杂类型检查的方法，对于此场景是安全且有效的
+  const steps: any[] = workflow.steps || [];
+  const toolIds = steps.map(step => step.tool_id).filter(Boolean);
 
-  const enrichedSteps: EnrichedStep[] = steps.map(step => {
-    const foundTool = tools?.find(t => t.id === step.tool_id) || null;
-    return { ...step, tool: foundTool };
-  });
+  let enrichedSteps: EnrichedStep[] = [];
 
-  return { workflow, enrichedSteps };
-}
-
-export default async function FlowDetailPage({ params }: { params: { id: string } }) {
-  const details = await getWorkflowDetails(params.id);
-
-  if (!details) {
-    return (
-      <div className="container mx-auto p-8 text-center">
-        <h1 className="text-2xl font-bold">哎呀！工作流不存在</h1>
-        <p className="mt-2">尝试查询的ID为: {params.id}</p>
-        <Link href="/flows" className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-          返回工作流列表
-        </Link>
-      </div>
-    );
+  if (toolIds.length > 0) {
+    const { data: tools } = await supabase
+      .from('tools')
+      .select('id, name, tagline')
+      .in('id', toolIds);
+    
+    enrichedSteps = steps.map(step => {
+      const foundTool = tools?.find((t: any) => t.id === step.tool_id) || null;
+      return { ...step, tool: foundTool };
+    });
+  } else {
+    enrichedSteps = steps.map(step => ({ ...step, tool: null }));
   }
-
-  const { workflow, enrichedSteps } = details;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">

@@ -1,4 +1,4 @@
-// 文件路径: app/flows/page.tsx (完整代码)
+// 路径: app/(main)/flows/page.tsx (完整代码)
 
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -7,13 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function FlowsPage() {
   const supabase = createSupabaseServerClient();
-
   const { data: workflows, error } = await supabase
     .from('workflows')
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) return <p className="p-8">出错了: {error.message}</p>;
+  if (error) {
+    return <p className="p-8 text-center text-red-500">获取工作流列表失败: {error.message}</p>;
+  }
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -35,7 +36,9 @@ export default async function FlowsPage() {
             </Link>
           ))
         ) : (
-          <p className="text-center text-gray-500">还没有任何工作流。</p>
+          <div className="text-center py-12">
+            <p className="text-gray-500">还没有任何工作流。</p>
+          </div>
         )}
       </div>
     </div>
