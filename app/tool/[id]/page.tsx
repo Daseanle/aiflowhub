@@ -1,36 +1,38 @@
-// 文件路径: app/tool/[id]/page.tsx (最终完整代码)
+// 文件路径: app/tool/[id]/page.tsx (完整代码)
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { createSupabaseServerClient } from '@/lib/supabase';
-import UseCaseForm from '@/app/components/UseCaseForm'; // 1. 导入表单组件
 
 export const dynamic = 'force-dynamic';
 
 async function getToolDetails(id: string) {
+  // --- 这是关键改动 ---
   const supabase = createSupabaseServerClient();
+  // --------------------
 
-  // 2. 同时获取工具信息、用例列表和当前用户信息
-  const toolPromise = supabase.from('tools').select('*').eq('id', id).single();
-  const useCasesPromise = supabase.from('use_cases').select('*').eq('tool_id', id).order('upvotes', { ascending: false });
-  const userPromise = supabase.auth.getUser();
-
-  // 使用 Promise.all 并行执行所有查询，提高效率
-  const [
-    { data: tool, error: toolError },
-    { data: useCases, error: useCasesError },
-    { data: { user } }
-  ] = await Promise.all([toolPromise, useCasesPromise, userPromise]);
+  const { data: tool, error: toolError } = await supabase
+    .from('tools')
+    .select('*')
+    .eq('id', id)
+    .single();
 
   if (toolError) {
     console.error(`[Tool Detail] 查询 tool (ID: ${id}) 出错:`, toolError.message);
     return null;
   }
+  
+  const { data: useCases, error: useCasesError } = await supabase
+    .from('use_cases')
+    .select('*')
+    .eq('tool_id', id)
+    .order('upvotes', { ascending: false });
+
   if (useCasesError) {
     console.error(`[Tool Detail] 查询 use_cases (tool_id: ${id}) 出错:`, useCasesError.message);
   }
 
-  return { tool, useCases: useCases || [], user };
+  return { tool, useCases: useCases || [] };
 }
 
 export default async function ToolDetailPage({ params }: { params: { id:string } }) {
@@ -48,7 +50,7 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
     );
   }
 
-  const { tool, useCases, user } = details;
+  const { tool, useCases } = details;
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -57,7 +59,6 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
       </Link>
       
       <div className="bg-white shadow-md rounded-lg p-6 md:p-8">
-        {/* ... (工具主信息区域，这部分代码和之前一样，无需修改) ... */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <div className="w-20 h-20 rounded-xl bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {tool.logo_url && <Image src={tool.logo_url.trim()} alt={`${tool.name} logo`} width={80} height={80} className="object-contain" />}
@@ -78,24 +79,9 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
 
       <div className="mt-12">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">🚀 用例宇宙</h2>
-        {/* 3. 判断用户是否登录，来决定显示什么 */}
-        {user ? (
-          // 如果用户已登录，显示提交表单
-          <UseCaseForm tool_id={tool.id} user_id={user.id} />
-        ) : (
-          // 如果用户未登录，显示提示和登录按钮
-          <div className="text-center py-8 px-6 bg-white rounded-lg shadow-sm border">
-            <p className="text-gray-600">想分享你的独家用例或 Prompt 吗？</p>
-            <Link href="/login" className="mt-4 inline-block bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700">
-              登录后即可分享
-            </Link>
-          </div>
-        )}
-        
-        {/* 用例列表 */}
-        <div className="mt-10 space-y-6">
-          {useCases.length > 0 ? (
-            useCases.map((useCase) => (
+        {useCases.length > 0 ? (
+          <div className="space-y-6">
+            {useCases.map((useCase) => (
               <div key={useCase.id} className="bg-white shadow-sm rounded-lg p-6 border">
                 <h3 className="text-xl font-semibold text-indigo-700">{useCase.title}</h3>
                 {useCase.notes && <p className="mt-2 text-gray-600">{useCase.notes}</p>}
@@ -105,13 +91,14 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
                   </div>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">还没有人分享这个工具的用例。</p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 px-6 bg-white rounded-lg shadow-sm">
+            <p className="text-gray-500">还没有人分享这个工具的用例。</p>
+            <p className="mt-2 text-gray-500">成为第一个分享者吧！</p>
+          </div>
+        )}
       </div>
     </main>
   );
