@@ -1,7 +1,7 @@
 // 文件路径: app/flows/[id]/page.tsx (完整代码)
 
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type WorkflowStep = {
   step: number;
@@ -19,10 +19,12 @@ type EnrichedStep = WorkflowStep & {
 };
 
 async function getWorkflowDetails(id: string) {
-  // --- 这是关键改动 ---
+  if (!id || isNaN(parseInt(id, 10))) {
+    return null;
+  }
+  
   const supabase = createSupabaseServerClient();
-  // --------------------
-
+  
   const { data: workflow, error: workflowError } = await supabase
     .from('workflows')
     .select('*')
@@ -30,7 +32,6 @@ async function getWorkflowDetails(id: string) {
     .single();
 
   if (workflowError || !workflow) {
-    console.error(`[Flow Detail] 查询 workflow (ID: ${id}) 出错:`, workflowError?.message || '未找到工作流');
     return null;
   }
 
@@ -42,14 +43,10 @@ async function getWorkflowDetails(id: string) {
     return { workflow, enrichedSteps: enrichedStepsWithoutTools };
   }
 
-  const { data: tools, error: toolsError } = await supabase
+  const { data: tools } = await supabase
     .from('tools')
     .select('id, name, tagline')
     .in('id', toolIds);
-
-  if (toolsError) {
-    console.error("[Flow Detail] 查询关联 tools 出错:", toolsError.message);
-  }
 
   const enrichedSteps: EnrichedStep[] = steps.map(step => {
     const foundTool = tools?.find(t => t.id === step.tool_id) || null;

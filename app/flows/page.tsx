@@ -1,14 +1,12 @@
 // 文件路径: app/flows/page.tsx (完整代码)
 
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FlowsPage() {
-  // --- 这是关键改动 ---
   const supabase = createSupabaseServerClient();
-  // --------------------
 
   const { data: workflows, error } = await supabase
     .from('workflows')
@@ -27,14 +25,18 @@ export default async function FlowsPage() {
       </div>
 
       <div className="space-y-6">
-        {workflows?.map((flow) => (
-          <Link key={flow.id} href={`/flows/${flow.id}`} className="block">
-            <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <h2 className="text-2xl font-bold text-indigo-600">{flow.title}</h2>
-              <p className="mt-2 text-gray-600">{flow.description}</p>
-            </div>
-          </Link>
-        ))}
+        {workflows && workflows.length > 0 ? (
+          workflows.map((flow) => (
+            <Link key={flow.id} href={`/flows/${flow.id}`} className="block">
+              <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <h2 className="text-2xl font-bold text-indigo-600">{flow.title}</h2>
+                <p className="mt-2 text-gray-600">{flow.description}</p>
+              </div>
+            </Link>
+          ))
+        ) : (
+          <p className="text-center text-gray-500">还没有任何工作流。</p>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
+// 文件路径: app/components/UseCaseForm.tsx (完整代码)
+
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-// 定义这个组件需要接收的参数类型
 type UseCaseFormProps = {
   tool_id: number;
   user_id: string;
@@ -17,8 +18,8 @@ export default function UseCaseForm({ tool_id, user_id }: UseCaseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const supabase = createClientComponentClient();
-  const router = useRouter(); // 用于提交后刷新页面
+  const supabase = createSupabaseBrowserClient();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +33,6 @@ export default function UseCaseForm({ tool_id, user_id }: UseCaseFormProps) {
         prompt,
         notes,
         tool_id,
-        // 注意：RLS 策略会使用这个 user_id 进行验证
-        // 但我们这里不直接插入 user_id，让数据库通过 RLS 自动关联
       });
 
     setIsSubmitting(false);
@@ -41,7 +40,6 @@ export default function UseCaseForm({ tool_id, user_id }: UseCaseFormProps) {
     if (insertError) {
       setError(insertError.message);
     } else {
-      // 提交成功，清空表单并刷新页面
       setTitle('');
       setPrompt('');
       setNotes('');

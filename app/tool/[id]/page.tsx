@@ -2,37 +2,31 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { createSupabaseServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import UseCaseForm from '@/app/components/UseCaseForm';
 
 export const dynamic = 'force-dynamic';
 
 async function getToolDetails(id: string) {
-  // --- 这是关键改动 ---
-  const supabase = createSupabaseServerClient();
-  // --------------------
-
-  const { data: tool, error: toolError } = await supabase
-    .from('tools')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (toolError) {
-    console.error(`[Tool Detail] 查询 tool (ID: ${id}) 出错:`, toolError.message);
+  if (!id || isNaN(parseInt(id, 10))) {
     return null;
   }
   
-  const { data: useCases, error: useCasesError } = await supabase
-    .from('use_cases')
-    .select('*')
-    .eq('tool_id', id)
-    .order('upvotes', { ascending: false });
+  const supabase = createSupabaseServerClient();
+  
+  const toolPromise = supabase.from('tools').select('*').eq('id', id).single();
+  const useCasesPromise = supabase.from('use_cases').select('*').eq('tool_id', id).order('upvotes', { ascending: false });
+  const userPromise = supabase.auth.getUser();
 
-  if (useCasesError) {
-    console.error(`[Tool Detail] 查询 use_cases (tool_id: ${id}) 出错:`, useCasesError.message);
-  }
+  const [
+    { data: tool, error: toolError },
+    { data: useCases, error: useCasesError },
+    { data: { user } }
+  ] = await Promise.all([toolPromise, useCasesPromise, userPromise]);
 
-  return { tool, useCases: useCases || [] };
+  if (toolError) return null;
+
+  return { tool, useCases: useCases || [], user };
 }
 
 export default async function ToolDetailPage({ params }: { params: { id:string } }) {
@@ -50,7 +44,7 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
     );
   }
 
-  const { tool, useCases } = details;
+  const { tool, useCases, user } = details;
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -79,9 +73,20 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
 
       <div className="mt-12">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">🚀 用例宇宙</h2>
-        {useCases.length > 0 ? (
-          <div className="space-y-6">
-            {useCases.map((useCase) => (
+        {user ? (
+          <UseCaseForm tool_id={tool.id} user_id={user.id} />
+        ) : (
+          <div className="text-center py-8 px-6 bg-white rounded-lg shadow-sm border">
+            <p className="text-gray-600">想分享你的独家用例或 Prompt 吗？</p>
+            <Link href="/login" className="mt-4 inline-block bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700">
+              登录后即可分享
+            </Link>
+          </div>
+        )}
+        
+        <div className="mt-10 space-y-6">
+          {useCases.length > 0 ? (
+            useCases.map((useCase) => (
               <div key={useCase.id} className="bg-white shadow-sm rounded-lg p-6 border">
                 <h3 className="text-xl font-semibold text-indigo-700">{useCase.title}</h3>
                 {useCase.notes && <p className="mt-2 text-gray-600">{useCase.notes}</p>}
@@ -91,14 +96,13 @@ export default async function ToolDetailPage({ params }: { params: { id:string }
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 px-6 bg-white rounded-lg shadow-sm">
-            <p className="text-gray-500">还没有人分享这个工具的用例。</p>
-            <p className="mt-2 text-gray-500">成为第一个分享者吧！</p>
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">还没有人分享这个工具的用例。</p>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

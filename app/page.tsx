@@ -1,117 +1,62 @@
-// 文件路径: app/tool/[id]/page.tsx (最终完整代码)
+// 文件路径: app/page.tsx (完整代码)
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { createSupabaseServerClient } from '@/lib/supabase';
-import UseCaseForm from '@/app/components/UseCaseForm'; // 1. 导入表单组件
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-async function getToolDetails(id: string) {
+export default async function Home() {
   const supabase = createSupabaseServerClient();
 
-  // 2. 同时获取工具信息、用例列表和当前用户信息
-  const toolPromise = supabase.from('tools').select('*').eq('id', id).single();
-  const useCasesPromise = supabase.from('use_cases').select('*').eq('tool_id', id).order('upvotes', { ascending: false });
-  const userPromise = supabase.auth.getUser();
+  const { data: tools, error } = await supabase
+    .from('tools')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-  // 使用 Promise.all 并行执行所有查询，提高效率
-  const [
-    { data: tool, error: toolError },
-    { data: useCases, error: useCasesError },
-    { data: { user } }
-  ] = await Promise.all([toolPromise, useCasesPromise, userPromise]);
-
-  if (toolError) {
-    console.error(`[Tool Detail] 查询 tool (ID: ${id}) 出错:`, toolError.message);
-    return null;
+  if (error) {
+    return <p className="p-8">出错了: {error.message}</p>;
   }
-  if (useCasesError) {
-    console.error(`[Tool Detail] 查询 use_cases (tool_id: ${id}) 出错:`, useCasesError.message);
-  }
-
-  return { tool, useCases: useCases || [], user };
-}
-
-export default async function ToolDetailPage({ params }: { params: { id:string } }) {
-  const details = await getToolDetails(params.id);
-
-  if (!details || !details.tool) {
-    return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">哎呀！工具不存在</h1>
-        <p className="mt-2">尝试查询的ID为: {params.id}</p>
-        <Link href="/" className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded">
-          返回首页
-        </Link>
-      </div>
-    );
-  }
-
-  const { tool, useCases, user } = details;
 
   return (
-    <main className="container mx-auto p-4 sm:p-8">
-      <Link href="/" className="text-blue-500 hover:underline mb-6 inline-block">
-        ← 返回列表
-      </Link>
-      
-      <div className="bg-white shadow-md rounded-lg p-6 md:p-8">
-        {/* ... (工具主信息区域，这部分代码和之前一样，无需修改) ... */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <div className="w-20 h-20 rounded-xl bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {tool.logo_url && <Image src={tool.logo_url.trim()} alt={`${tool.name} logo`} width={80} height={80} className="object-contain" />}
-          </div>
-          <div className="flex-grow">
-            <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900">{tool.name}</h1>
-            <p className="mt-1 text-lg md:text-xl text-gray-500">{tool.tagline}</p>
-          </div>
-          <a href={tool.website_url || '#'} target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto text-center">
-            访问官网
-          </a>
-        </div>
-        <div className="mt-8 border-t border-gray-200 pt-8">
-          <h2 className="text-2xl font-bold text-gray-800">详细介绍</h2>
-          <p className="mt-4 text-lg leading-relaxed text-gray-700 whitespace-pre-wrap">{tool.description}</p>
-        </div>
+    <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="text-center my-8">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900">
+          AI Flow Hub
+        </h1>
+        <p className="mt-4 max-w-2xl mx-auto text-lg sm:text-xl text-gray-500">
+          你的下一代 AI 工作流解决方案中心
+        </p>
       </div>
 
-      <div className="mt-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">🚀 用例宇宙</h2>
-        {/* 3. 判断用户是否登录，来决定显示什么 */}
-        {user ? (
-          // 如果用户已登录，显示提交表单
-          <UseCaseForm tool_id={tool.id} user_id={user.id} />
-        ) : (
-          // 如果用户未登录，显示提示和登录按钮
-          <div className="text-center py-8 px-6 bg-white rounded-lg shadow-sm border">
-            <p className="text-gray-600">想分享你的独家用例或 Prompt 吗？</p>
-            <Link href="/login" className="mt-4 inline-block bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700">
-              登录后即可分享
-            </Link>
-          </div>
-        )}
-        
-        {/* 用例列表 */}
-        <div className="mt-10 space-y-6">
-          {useCases.length > 0 ? (
-            useCases.map((useCase) => (
-              <div key={useCase.id} className="bg-white shadow-sm rounded-lg p-6 border">
-                <h3 className="text-xl font-semibold text-indigo-700">{useCase.title}</h3>
-                {useCase.notes && <p className="mt-2 text-gray-600">{useCase.notes}</p>}
-                {useCase.prompt && (
-                  <div className="mt-4 p-4 bg-gray-900 text-white rounded-md">
-                    <pre className="whitespace-pre-wrap text-sm font-mono">{useCase.prompt}</pre>
-                  </div>
-                )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tools?.map((tool) => (
+          <Link key={tool.id} href={`/tool/${tool.id}`} className="group block">
+            <div className="border rounded-xl p-5 h-full flex flex-col shadow-sm transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-1">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center mr-4 overflow-hidden">
+                  {tool.logo_url ? (
+                    <Image
+                      src={tool.logo_url.trim()}
+                      alt={`${tool.name} logo`}
+                      width={48}
+                      height={48}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <span className="font-bold text-gray-500 text-lg">
+                      {tool.name.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">{tool.name}</h2>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">还没有人分享这个工具的用例。</p>
+              <div className="flex-grow">
+                <p className="text-gray-600">{tool.tagline}</p>
+              </div>
             </div>
-          )}
-        </div>
+          </Link>
+        ))}
       </div>
     </main>
   );

@@ -1,16 +1,18 @@
-'use client'; // 告诉 Next.js 这是一个客户端组件
+// 文件路径: app/login/page.tsx (完整代码)
+
+'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [view, setView] = useState('sign-in'); // 'sign-in' 或 'sign-up'
+  const [view, setView] = useState('sign-in');
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +41,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/'); // 登录成功后跳转到首页
+      router.push('/');
       router.refresh();
     }
   };
