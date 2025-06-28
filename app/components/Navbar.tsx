@@ -1,15 +1,15 @@
-// 文件路径: app/components/Navbar.tsx (完整代码)
+// 文件路径: app/components/Navbar.tsx (最终确认)
 
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-// 创建一个独立的 Server Action 用于退出登录
+// 这是退出登录的 Server Action，它直接在这里定义和使用
 async function SignOut() {
   'use server';
   const supabase = createSupabaseServerClient();
   await supabase.auth.signOut();
   const { revalidatePath } = await import('next/cache');
-  revalidatePath('/'); // 退出后刷新首页数据
+  revalidatePath('/');
 }
 
 export default async function Navbar() {
@@ -20,6 +20,7 @@ export default async function Navbar() {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+          {/* ... 左侧和中间的导航链接代码 ... */}
           <div className="flex-shrink-0">
             <Link href="/" className="text-2xl font-bold text-gray-900">
               AI Flow Hub
@@ -35,10 +36,13 @@ export default async function Navbar() {
               </Link>
             </div>
           </div>
+          
+          {/* 右侧的登录/退出逻辑 */}
           <div>
             {user ? (
               <div className="flex items-center gap-4">
                 <span className="text-sm text-gray-600 hidden sm:block">{user.email}</span>
+                {/* 这个 form 的 action 直接调用了上面的 SignOut 函数 */}
                 <form action={SignOut}>
                   <button type="submit" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">
                     退出
