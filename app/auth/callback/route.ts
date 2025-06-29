@@ -1,5 +1,5 @@
 // 文件路径: app/auth/callback/route.ts (完整代码)
-import { createClient } from '@/lib/supabase/server'; // 导入新的 createClient
+import { createClient } from '@/lib/supabase/server'; // 修改了导入的函数名
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code');
 
   if (code) {
-    const supabase = createClient(); // 使用新的函数
+    const supabase = createClient(); // 修改了函数调用
     await supabase.auth.exchangeCodeForSession(code);
   }
 
