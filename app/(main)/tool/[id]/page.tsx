@@ -2,48 +2,30 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server'; // 关键改动
 import UseCaseForm from '@/app/components/UseCaseForm';
 import { notFound } from 'next/navigation';
 
-// 明确定义页面接收的 Props 类型
-type PageProps = {
-  params: {
-    id: string;
-  };
-};
+type PageProps = { params: { id: string } };
 
 export const dynamic = 'force-dynamic';
 
 export default async function ToolDetailPage({ params }: PageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createClient(); // 关键改动
   const id = params.id;
 
-  // 首先，获取工具信息
   const { data: tool } = await supabase
     .from('tools')
-    .select('*')
+    .select('*, use_cases(*)')
     .eq('id', id)
     .single();
 
-  // 如果工具不存在，直接调用 notFound()，这是 Next.js 最推荐的方式
   if (!tool) {
     notFound();
   }
 
-  // 然后，并行获取用例和用户信息
-  const useCasesPromise = supabase
-    .from('use_cases')
-    .select('*')
-    .eq('tool_id', tool.id)
-    .order('upvotes', { ascending: false });
-
-  const userPromise = supabase.auth.getUser();
-
-  const [{ data: useCases }, { data: { user } }] = await Promise.all([
-    useCasesPromise,
-    userPromise,
-  ]);
+  const { data: { user } } = await supabase.auth.getUser();
+  const useCases = tool.use_cases || [];
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -85,7 +67,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
         
         <div className="mt-10 space-y-6">
           {(useCases && useCases.length > 0) ? (
-            useCases.map((useCase) => (
+            useCases.map((useCase: any) => (
               <div key={useCase.id} className="bg-white shadow-sm rounded-lg p-6 border">
                 <h3 className="text-xl font-semibold text-indigo-700">{useCase.title}</h3>
                 {useCase.notes && <p className="mt-2 text-gray-600">{useCase.notes}</p>}

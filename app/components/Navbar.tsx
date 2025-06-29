@@ -1,26 +1,24 @@
-// 文件路径: app/components/Navbar.tsx (最终确认)
-
+// 文件路径: app/components/Navbar.tsx (完整代码)
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-
-// 这是退出登录的 Server Action，它直接在这里定义和使用
-async function SignOut() {
-  'use server';
-  const supabase = createSupabaseServerClient();
-  await supabase.auth.signOut();
-  const { revalidatePath } = await import('next/cache');
-  revalidatePath('/');
-}
+import { createClient } from '@/lib/supabase/server'; // 修改了导入的函数名
+import { cookies } from 'next/headers'; // 需要导入 cookies 来创建客户端
+import { redirect } from 'next/navigation';
 
 export default async function Navbar() {
-  const supabase = createSupabaseServerClient();
+  const supabase = createClient(); // 修改了函数调用
   const { data: { user } } = await supabase.auth.getUser();
+
+  const signOut = async () => {
+    'use server';
+    const supabase = createClient(); // 修改了函数调用
+    await supabase.auth.signOut();
+    return redirect('/'); // 退出后重定向到首页
+  };
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="container mx-auto px-4 sm:px-6 lg:p-8">
         <div className="flex items-center justify-between h-16">
-          {/* ... 左侧和中间的导航链接代码 ... */}
           <div className="flex-shrink-0">
             <Link href="/" className="text-2xl font-bold text-gray-900">
               AI Flow Hub
@@ -36,14 +34,11 @@ export default async function Navbar() {
               </Link>
             </div>
           </div>
-          
-          {/* 右侧的登录/退出逻辑 */}
           <div>
             {user ? (
               <div className="flex items-center gap-4">
                 <span className="text-sm text-gray-600 hidden sm:block">{user.email}</span>
-                {/* 这个 form 的 action 直接调用了上面的 SignOut 函数 */}
-                <form action={SignOut}>
+                <form action={signOut}>
                   <button type="submit" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">
                     退出
                   </button>

@@ -1,20 +1,17 @@
 // 文件路径: app/auth/callback/route.ts (完整代码)
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server'; // 导入新的 createClient
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+export async function GET(request: NextRequest) {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get('code');
 
   if (code) {
-    const supabase = createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+    const supabase = createClient(); // 使用新的函数
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-error`);
+  // 重定向回首页
+  return NextResponse.redirect(requestUrl.origin);
 }
